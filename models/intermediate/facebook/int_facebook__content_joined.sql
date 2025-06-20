@@ -1,22 +1,12 @@
--- models/intermediate/facebook/int_facebook__content_joined.sql
-
-{{
-    config(
-        materialized='view'
-    )
-}}
-
--- Phần SQL còn lại giữ nguyên y hệt như cũ
-with feed_insights as (
-
+with 
+feed_insights as (
+    -- đọc từ bảng staging vật lý, đã được tối ưu
     select * from {{ ref('stg_facebook__feed_insights') }}
-
 ),
 
 video_insights as (
-
+    -- đọc từ bảng staging vật lý, đã được tối ưu
     select * from {{ ref('stg_facebook__video_insights') }}
-
 ),
 
 joined as (
@@ -41,21 +31,21 @@ final_select as (
         content_id,
         platform_content_id,
         timestamp,
+        video_id,
         combined_views as views,
-        coalesce(toInt64(impressions),0) as impressions,
-        reactions,
-        comments,
-        shares,
-        saves,
-        coalesce(combined_avg_watch_time / 1000,0) as avg_watch_time,
-        paid_views,
-        organic_views,
-        paid_impressions,
-        organic_impressions,
+        coalesce(toInt64(impressions), 0) as impressions,
+        reactions as reactions,
+        comments as comments,
+        shares as shares,
+        saves as saves,
+        coalesce(toFloat64(combined_avg_watch_time), 0) as avg_watch_time,
+        paid_views as paid_views,
+        organic_views as organic_views,
+        paid_impressions as paid_impressions,
+        organic_impressions as organic_impressions,
         _raw,
         _crawl_at
     from joined
 )
 
 select * from final_select
-

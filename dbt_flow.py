@@ -54,7 +54,7 @@ if __name__ == "__main__":
         name="dbt-run-from-git",
         work_pool_name="default-agent-pool",
         # Lịch trình chạy
-        schedule=Cron(cron="0 * * * *", timezone="Asia/Ho_Chi_Minh"),
+        schedule=Cron("0 * * * *", timezone="Asia/Ho_Chi_Minh")
         # Các tham số khác có thể thêm ở đây nếu cần
     )
     

@@ -1,5 +1,5 @@
 with cte_feed_insights AS
-         (SELECT 1                                                                                             AS platform_id,
+         (SELECT '1'                                                                                             AS platform_id,
                  JSONExtractString(_airbyte_data, 'page_id')                                                   AS platform_account_id,
                  concat(platform_id, '__', platform_account_id)                                                AS account_id,
                  splitByChar('_', JSONExtractString(_airbyte_data, 'id'))[-1]                                  AS platform_content_id,

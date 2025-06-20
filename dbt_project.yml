@@ -30,6 +30,9 @@ models:
         +order_by: "(platform_id, account_id, page_id, content_id, timestamp)"
         +settings:
           index_granularity: 8192
+
+    intermediate:
+      +materialized: view # Tất cả các model join trung gian sẽ là VIEW
           
     staging:
       facebook:

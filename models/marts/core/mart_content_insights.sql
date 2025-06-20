@@ -1,17 +1,8 @@
--- models/marts/core/fct_content_insights.sql
+select * from {{ ref('int_facebook__content_joined') }}
 
-with unioned_sources as (
+-- Áp dụng logic tăng trưởng để chỉ nạp các dòng mới vào bảng mart
+{% if is_incremental() %}
 
-    {{ dbt_utils.union_relations(
-        relations=[
-            ref('int_facebook__content_joined'),
-            ref('stg_instagram__media_insights'),
-            ref('stg_tiktok__video_insights')
-        ]
-    ) }}
+  where _crawl_at > (select max(_crawl_at) from {{ this }})
 
-)
-
-select * from unioned_sources
-
-
+{% endif %}

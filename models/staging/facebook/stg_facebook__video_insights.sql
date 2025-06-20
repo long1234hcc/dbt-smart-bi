@@ -1,4 +1,4 @@
-WITH cte_video AS (SELECT 1                                                                                       AS platform_id,
+WITH cte_video AS (SELECT '1'                                                                                       AS platform_id,
                           JSONExtractString(_airbyte_data, 'page_id')                                             AS page_id,
                           JSONExtractString(_airbyte_data, 'id')                                                  AS video_id,
                           JSONExtract(_airbyte_data, 'video_insights', 'data',
