@@ -1,0 +1,47 @@
+# models/staging/facebook/schema.yml
+
+version: 2
+
+sources:
+  - name: facebook_raw_data 
+    schema: airbyte_internal 
+    tables:
+      - name: raw_feed_insights
+        identifier: VCB_FACEBOOK_raw__stream_feed_insights
+        description: Bảng dữ liệu thô chứa các chỉ số của bài post (feed) từ Airbyte.
+
+      - name: raw_video_insights
+        identifier: VCB_FACEBOOK_raw__stream_video_insights
+        description: Bảng dữ liệu thô chứa các chỉ số của video từ Airbyte.
+      
+      - name: raw_feed_metadata
+        identifier: VCB_FACEBOOK_raw__stream_feed_metadata
+        description: Bảng dữ liệu thô chứa thông tin metadata của bài post từ Airbyte.
+
+
+# =======================================================
+# ==== BẮT ĐẦU THÊM KHỐI MỚI TỪ ĐÂY ====
+# =======================================================
+
+models:
+  - name: stg_facebook__feed_insights
+    description: "Model staging làm sạch dữ liệu feed insights từ Facebook. Mỗi hàng là một bài post tại một thời điểm."
+    columns:
+      - name: content_id
+        description: "ID duy nhất của một bài post (đã được hợp nhất)."
+        tests:
+          - not_null
+
+  - name: stg_facebook__video_insights
+    description: "Model staging làm sạch dữ liệu video insights từ Facebook."
+    columns:
+      - name: video_id
+        description: "ID duy nhất của một video (đã được hợp nhất)."
+        tests:
+          - not_null
+
+      - name: views
+        description: "Tổng lượt xem của video."
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"

@@ -1,0 +1,23 @@
+# models/marts/core/schema.yml
+version: 2
+
+models:
+  - name: mart_content_insights 
+    description: "Bảng fact cuối cùng hợp nhất dữ liệu từ tất cả các nền tảng."
+    columns:
+      - name: impressions
+        description: "Lượt hiển thị (có thể là NULL từ một số nguồn)"
+        data_type: Nullable(Int64) 
+
+      - name: reactions
+        description: "Lượt tương tác"
+        data_type: Nullable(Int64)
+
+      - name: comments
+        description: "Lượt bình luận"
+        data_type: Nullable(Int64)
+
+      - name: shares
+        description: "Lượt chia sẻ"
+        data_type: Nullable(Int64)
+

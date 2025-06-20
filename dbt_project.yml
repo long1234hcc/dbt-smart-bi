@@ -1,0 +1,82 @@
+
+name: 'dbt_smart_bi'
+version: '1.0.0'
+
+profile: 'vcb_dbt_project'
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:         # directories to be removed by `dbt clean`
+  - "target"
+  - "dbt_packages"
+
+
+# Configuring models
+# Full documentation: https://docs.getdbt.com/docs/configuring-models
+
+# In this example config, we tell dbt to build all models in the example/
+# directory as views. These settings can be overridden in the individual model
+# files using the `{{ config(...) }}` macro.
+models:
+  dbt_smart_bi:
+    marts:
+      core:
+        +materialized: incremental
+        +engine: "ReplacingMergeTree(_crawl_at)"
+        +order_by: "(platform_id, account_id, page_id, content_id, timestamp)"
+        +settings:
+          index_granularity: 8192
+          
+    staging:
+      facebook:
+       +materialized: incremental
+       +engine: "ReplacingMergeTree(_crawl_at)"
+       +settings:
+        index_granularity: 8192
+        allow_nullable_key: 1
+
+
+       stg_facebook__feed_insights:
+         +order_by: "(platform_id, account_id, page_id, content_id, timestamp)"
+
+       stg_facebook__video_insights:
+         +order_by: "(platform_id, page_id, video_id, timestamp)"
+
+       stg_facebook__metadata:
+         +order_by: "(platform_id, account_id, page_id, content_id, content_type)"
+
+
+      tiktok:
+       +materialized: incremental
+       +engine: "ReplacingMergeTree(_crawl_at)"
+       +settings:
+        index_granularity: 8192
+        allow_nullable_key: 1
+
+        
+       stg_tiktok__video_insights:
+         +order_by: "(platform_id, account_id, page_id, content_id, timestamp)"
+
+       stg_tiktok__metadata:
+         +order_by: "(platform_id, account_id, page_id, content_id, content_type)"
+
+
+      instagram:
+       +materialized: incremental
+       +engine: "ReplacingMergeTree(_crawl_at)"
+       +settings:
+        index_granularity: 8192
+        allow_nullable_key: 1
+        
+       stg_instagram__media_insights:
+         +order_by: "(platform_id, account_id, page_id, content_id, timestamp)"
+
+       stg_instagram__metadata:
+         +order_by: "(platform_id, account_id, page_id, content_id, content_type)"
+
+       stg_instagram_newest_information:
+         +order_by: "(platform_id, account_id, page_id, content_id, content_type)"

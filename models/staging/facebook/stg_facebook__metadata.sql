@@ -1,0 +1,61 @@
+WITH cte_info_post AS
+         (SELECT '1'                                                                                               AS platform_id,
+                 'FACEBOOK'                                                                                        AS platform_name,
+                 concat(platform_id, '__',
+                        JSONExtractString(_airbyte_data, 'from', 'id'))                                            AS account_id,
+                 JSONExtractString(_airbyte_data, 'from', 'id')                                                    AS platform_account_id,
+                 JSONExtractString(_airbyte_data, 'from', 'name')                                                  AS user_name,
+                 JSONExtractString(_airbyte_data, 'from', 'name')                                                  AS account_name,
+                 extractAll(JSONExtractString(_airbyte_data, 'message'),
+                            '#(?:[\\wÀ-ỹđĐ_]+)')                                                                   AS tags,
+                 concat('1__', JSONExtractString(_airbyte_data, 'page_id'))                                        AS page_id,
+                 JSONExtractString(_airbyte_data, 'page_id')                                                       AS platform_page_id,
+                 JSONExtractString(_airbyte_data, 'from', 'name')                                                  AS page_name,
+                 concat('1__',
+                        splitByChar('_', JSONExtractString(_airbyte_data, 'id'))[-1])                              AS content_id,
+                 splitByChar('_', JSONExtractString(_airbyte_data, 'id'))[-1]                                      AS platform_content_id,
+                 multiIf(positionCaseInsensitive(JSONExtractString(_airbyte_data, 'permalink_url'), 'videos') > 0,
+                         'VIDEO',
+                         positionCaseInsensitive(JSONExtractString(_airbyte_data, 'permalink_url'), 'reel') > 0, 'REEL',
+                         positionCaseInsensitive(JSONExtractString(_airbyte_data, 'permalink_url'), 'post') > 0, 'POST',
+                         positionCaseInsensitive(JSONExtractString(_airbyte_data, 'permalink_url'), 'photos') > 0,
+                         'PHOTOS',
+                         'unknown')                                                                                AS content_type,
+                 toDateTime64(parseDateTimeBestEffort(JSONExtractString(_airbyte_data, 'created_time')), 3,
+                              'UTC')                                                                               AS created_time,
+                 JSONExtractString(_airbyte_data, 'message')                                                       AS caption,
+                 JSONExtractString(_airbyte_data, 'url_page_avatar')                                               AS page_thumbnail_url,
+                 JSONExtractString(_airbyte_data, 'full_picture')                                                  AS thumbnail_url,
+                 JSONExtractString(_airbyte_data, 'permalink_url')                                                 AS permalink,
+                 account_id                                                                                        AS created_user,
+                 JSONExtractRaw(_airbyte_data)                                                                     AS _raw,
+                 _airbyte_extracted_at                                                                             AS _crawl_at
+          FROM {{ source('facebook_raw_data', 'raw_feed_metadata') }}
+          WHERE JSONExtractString(_airbyte_data, 'is_published') = 'true')
+SELECT platform_id,
+       platform_name,
+       account_id,
+       platform_account_id,
+       user_name,
+       account_name,
+       tags,
+       page_id,
+       platform_page_id,
+       page_name,
+       content_id,
+       platform_content_id,
+       content_type,
+       created_time,
+       caption,
+       page_thumbnail_url,
+       thumbnail_url,
+       permalink,
+       created_user,
+       _raw,
+       _crawl_at
+FROM cte_info_post
+
+
+{% if is_incremental() %}
+    where _crawl_at > (select max(_crawl_at) from {{ this }})
+{% endif %}

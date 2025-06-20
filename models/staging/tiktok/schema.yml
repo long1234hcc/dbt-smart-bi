@@ -1,0 +1,37 @@
+# models/staging/facebook/schema.yml
+
+version: 2
+
+sources:
+  - name: tiktok_raw_data 
+    schema: airbyte_internal 
+    tables:
+      - name: raw_tiktok_video_insights
+        identifier: VCB_TIKTOK_BUSSINESS_raw__stream_get_video_insights
+        description: Bảng dữ liệu thô chứa các chỉ số của video Tiktok từ Airbyte.
+
+      - name: raw_tiktok_video_metadata
+        identifier: VCB_TIKTOK_BUSSINESS_raw__stream_get_video_insights
+        description: Bảng dữ liệu thô chứa các chỉ số  metadata của video Tiktok từ Airbyte.
+
+
+# =======================================================
+# ==== BẮT ĐẦU THÊM KHỐI MỚI TỪ ĐÂY ====
+# =======================================================
+
+models:
+  - name: test_tiktok_video_insights
+    description: "Model staging làm sạch dữ liệu feed insights từ Facebook. Mỗi hàng là một bài post tại một thời điểm."
+    columns:
+      - name: content_id
+        description: "ID duy nhất của một bài post (đã được hợp nhất)."
+        tests:
+          - not_null
+
+  - name: test_tiktok_video_metadata
+    description: "Model staging làm sạch dữ liệu video insights từ Facebook."
+    columns:
+      - name: content_id
+        description: "ID duy nhất của một metadata"
+        tests:
+          - not_null
