@@ -1,61 +1,58 @@
 # dbt_flow.py
 
-# Import các thư viện cần thiết
 from prefect import flow, task
-# Import lớp Cron từ prefect.schedules
-from prefect.schedules import Cron
 from prefect_shell import ShellOperation
 from pathlib import Path
-
-# ===============================================
-# === CÁC TASK VÀ FLOW LOGIC GIỮ NGUYÊN =========
-# ===============================================
 
 @task(log_prints=True, name="Run dbt build")
 def run_dbt_build():
     """
-    Task này sẽ chạy lệnh `dbt build` cho toàn bộ dự án.
+    Task này sẽ chạy lệnh `dbt build` và in ra log chi tiết.
     """
-    print("Bắt đầu chạy dbt build từ code trên Git...")
+    print("Bắt đầu chạy dbt build...")
+    
     dbt_project_path = Path.cwd()
+
+    # Tạo đối tượng để chạy lệnh shell
     shell_op = ShellOperation(
-        commands=["dbt build"],
+        commands=["dbt build --debug"], # Thêm flag --debug để có log chi tiết nhất
         working_dir=dbt_project_path,
         stream_output=True
     )
-    result = shell_op.run()
-    if result.return_code != 0:
-        raise Exception("dbt build failed!")
+    
+    # Chạy lệnh và chờ nó hoàn thành
+    process = shell_op.run()
+    
+    # In ra toàn bộ log output để gỡ lỗi
+    # .fetch_result() sẽ lấy toàn bộ những gì đã được in ra terminal
+    output = "\n".join(process.fetch_result())
+    print("--- DBT COMMAND OUTPUT ---")
+    print(output)
+    print("--- END DBT COMMAND OUTPUT ---")
+    
+    # Kiểm tra nếu lệnh dbt thất bại thì báo lỗi toàn bộ flow
+    if process.return_code != 0:
+        raise Exception(f"dbt build failed with exit code {process.return_code}. Check logs above for details.")
+    
     print("dbt build hoàn tất thành công!")
     return True
 
+
 @flow(name="Hourly dbt Build From Git")
 def dbt_hourly_run_flow():
-    """
-    Flow chỉ có một nhiệm vụ: chạy dbt build.
-    """
     run_dbt_build()
 
-# ========================================================
-# ===== KHỐI DEPLOYMENT THEO CHUẨN GIT STORAGE CỦA PREFECT 3 =====
-# ========================================================
-
 if __name__ == "__main__":
-    # Import flow object dưới một tên khác để tránh nhầm lẫn
     from prefect.flows import flow as prefect_flow
 
-    # Gọi trực tiếp phương thức .deploy() từ flow đã được load từ source
-    prefect_flow.from_source(
-        # Chỉ định nguồn code là một kho chứa Git
+    deployment = prefect_flow.from_source(
         source="https://github.com/long1234hcc/dbt-smart-bi.git",
-        # Chỉ định file và tên hàm flow cần chạy bên trong kho chứa đó
         entrypoint="dbt_flow.py:dbt_hourly_run_flow"
-    ).deploy(
-        name="dbt-run-from-git",
-        work_pool_name="default-agent-pool",
-        # Lịch trình chạy
-        schedule=Cron("0 * * * *", timezone="Asia/Ho_Chi_Minh")
-        # Các tham số khác có thể thêm ở đây nếu cần
+    ).to_deployment(
+        name="dbt-run-from-git-debug", 
+        work_pool_name="dbt-pool"
     )
     
-    print("Deployment 'dbt-run-from-git' từ nguồn GitHub đã được tạo/cập nhật thành công!")
+    deployment.apply()
+    
+    print("Deployment 'dbt-run-from-git-debug' đã được tạo/cập nhật thành công!")
