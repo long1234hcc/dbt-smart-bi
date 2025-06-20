@@ -1,54 +1,60 @@
 # dbt_flow.py
 
+from pathlib import Path
 from prefect import flow, task
 from prefect_shell import ShellOperation
-from pathlib import Path
+from prefect.schedules import Cron
 
-@task(log_prints=True, name="Run dbt build")
-def run_dbt_build():
+@task(name="Run dbt build", log_prints=True, retries=1, retry_delay_seconds=60)
+def run_dbt_build_task():
     """
-    Task này sẽ chạy lệnh `dbt build` và kiểm tra kết quả đúng cách.
+    Task này sẽ chạy lệnh `dbt build` cho toàn bộ dự án,
+    với đường dẫn tường minh để đảm bảo Worker luôn tìm thấy.
     """
-    print("Bắt đầu chạy dbt build...")
-    dbt_project_path = Path.cwd()
-    shell_op = ShellOperation(
-        commands=["dbt build"],
-        working_dir=dbt_project_path,
-        stream_output=True
+    # QUAN TRỌNG: Hãy đảm bảo các đường dẫn tuyệt đối này là chính xác trên máy bạn
+    dbt_project_path = "/home/long/workspace/dbt-smart-bi"
+    profiles_path = "/home/long/.dbt"
+
+    # Xây dựng lệnh dbt hoàn chỉnh với các flag chỉ định đường dẫn
+    dbt_command = (
+        "dbt build "
+        f"--project-dir {dbt_project_path} "
+        f"--profiles-dir {profiles_path}"
     )
 
-    # .run() trả về một danh sách các process, một cho mỗi lệnh
-    completed_processes = shell_op.run()
+    print(f"Executing command: {dbt_command}")
 
-    # Lấy process đầu tiên và duy nhất từ danh sách
-    dbt_process = completed_processes[0]
-
-    # Kiểm tra return_code từ đối tượng process đó
-    if dbt_process.return_code != 0:
-        # Lấy log lỗi để hiển thị
-        error_logs = "\n".join(dbt_process.fetch_result())
-        raise Exception(f"dbt build failed with exit code {dbt_process.return_code}.\nLogs:\n{error_logs}")
-
-    print("dbt build hoàn tất thành công!")
-    return True
+    # ShellOperation sẽ tự động báo lỗi (raise exception) nếu return code khác 0.
+    # Chúng ta không cần kiểm tra thủ công, giúp code sạch hơn.
+    ShellOperation(
+        commands=[dbt_command],
+        stream_output=True
+    ).run()
+    
+    print("dbt build completed successfully!")
 
 
-@flow(name="Hourly dbt Build From Git")
-def dbt_hourly_run_flow():
-    run_dbt_build()
+@flow(name="Production Social Media ETL")
+def dbt_etl_pipeline():
+    """
+    Flow chính để điều phối việc chạy dbt pipeline.
+    """
+    run_dbt_build_task()
 
 
 if __name__ == "__main__":
+    # Import flow object dưới một tên khác để tránh nhầm lẫn
     from prefect.flows import flow as prefect_flow
 
-    deployment = prefect_flow.from_source(
+    # Sử dụng cú pháp deploy cuối cùng và đúng chuẩn nhất cho Prefect 3
+    prefect_flow.from_source(
         source="https://github.com/long1234hcc/dbt-smart-bi.git",
-        entrypoint="dbt_flow.py:dbt_hourly_run_flow"
-    ).to_deployment(
-        name="dbt-run-from-git-final",
-        work_pool_name="dbt-pool"
+        entrypoint="dbt_flow.py:dbt_etl_pipeline"
+    ).deploy(
+        name="dbt-prod-run",
+        work_pool_name="dbt-pool",
+        # Sử dụng đối tượng Cron để có thể chỉ định múi giờ
+        schedule=Cron(cron="0 * * * *", timezone="Asia/Ho_Chi_Minh")
     )
     
-    deployment.apply()
-    
-    print("Deployment 'dbt-run-from-git-final' đã được tạo/cập nhật thành công!")
+    print("Deployment 'dbt-prod-run' đã được tạo/cập nhật thành công!")
