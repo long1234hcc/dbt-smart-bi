@@ -7,36 +7,28 @@ from pathlib import Path
 @task(log_prints=True, name="Run dbt build")
 def run_dbt_build():
     """
-    Task này sẽ chạy lệnh `dbt build` cho toàn bộ dự án,
-    với đường dẫn được chỉ định rõ ràng.
+    Task này sẽ chạy lệnh `dbt build` và kiểm tra kết quả đúng cách.
     """
-    print("Bắt đầu chạy dbt build với đường dẫn tường minh...")
-    
-    # Lấy đường dẫn tuyệt đối đến thư mục dự án dbt
-    # Worker sẽ chạy code từ một thư mục tạm, nên chúng ta cần đường dẫn tuyệt đối
-    # tới nơi chứa file profiles.yml
-    dbt_project_path = "/home/long/workspace/dbt-smart-bi" # <-- Sửa lại đường dẫn tuyệt đối của bạn
-    profiles_path = "/home/long/.dbt" # <-- Đường dẫn đến thư mục chứa profiles.yml
-
-    # Xây dựng lệnh dbt hoàn chỉnh
-    dbt_command = (
-        "dbt build "
-        f"--project-dir {dbt_project_path} "
-        f"--profiles-dir {profiles_path}"
-    )
-
-    print(f"Executing command: {dbt_command}")
-
+    print("Bắt đầu chạy dbt build...")
+    dbt_project_path = Path.cwd()
     shell_op = ShellOperation(
-        commands=[dbt_command], # Chạy lệnh đã được xây dựng
+        commands=["dbt build"],
+        working_dir=dbt_project_path,
         stream_output=True
     )
-    
-    result = shell_op.run()
-    
-    if result.return_code != 0:
-        raise Exception("dbt build failed!")
-    
+
+    # .run() trả về một danh sách các process, một cho mỗi lệnh
+    completed_processes = shell_op.run()
+
+    # Lấy process đầu tiên và duy nhất từ danh sách
+    dbt_process = completed_processes[0]
+
+    # Kiểm tra return_code từ đối tượng process đó
+    if dbt_process.return_code != 0:
+        # Lấy log lỗi để hiển thị
+        error_logs = "\n".join(dbt_process.fetch_result())
+        raise Exception(f"dbt build failed with exit code {dbt_process.return_code}.\nLogs:\n{error_logs}")
+
     print("dbt build hoàn tất thành công!")
     return True
 
