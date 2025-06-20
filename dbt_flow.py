@@ -7,32 +7,35 @@ from pathlib import Path
 @task(log_prints=True, name="Run dbt build")
 def run_dbt_build():
     """
-    Task này sẽ chạy lệnh `dbt build` và in ra log chi tiết.
+    Task này sẽ chạy lệnh `dbt build` cho toàn bộ dự án,
+    với đường dẫn được chỉ định rõ ràng.
     """
-    print("Bắt đầu chạy dbt build...")
+    print("Bắt đầu chạy dbt build với đường dẫn tường minh...")
     
-    dbt_project_path = Path.cwd()
+    # Lấy đường dẫn tuyệt đối đến thư mục dự án dbt
+    # Worker sẽ chạy code từ một thư mục tạm, nên chúng ta cần đường dẫn tuyệt đối
+    # tới nơi chứa file profiles.yml
+    dbt_project_path = "/home/long/workspace/dbt-smart-bi" # <-- Sửa lại đường dẫn tuyệt đối của bạn
+    profiles_path = "/home/long/.dbt" # <-- Đường dẫn đến thư mục chứa profiles.yml
 
-    # Tạo đối tượng để chạy lệnh shell
+    # Xây dựng lệnh dbt hoàn chỉnh
+    dbt_command = (
+        "dbt build "
+        f"--project-dir {dbt_project_path} "
+        f"--profiles-dir {profiles_path}"
+    )
+
+    print(f"Executing command: {dbt_command}")
+
     shell_op = ShellOperation(
-        commands=["dbt build --debug"], # Thêm flag --debug để có log chi tiết nhất
-        working_dir=dbt_project_path,
+        commands=[dbt_command], # Chạy lệnh đã được xây dựng
         stream_output=True
     )
     
-    # Chạy lệnh và chờ nó hoàn thành
-    process = shell_op.run()
+    result = shell_op.run()
     
-    # In ra toàn bộ log output để gỡ lỗi
-    # .fetch_result() sẽ lấy toàn bộ những gì đã được in ra terminal
-    output = "\n".join(process.fetch_result())
-    print("--- DBT COMMAND OUTPUT ---")
-    print(output)
-    print("--- END DBT COMMAND OUTPUT ---")
-    
-    # Kiểm tra nếu lệnh dbt thất bại thì báo lỗi toàn bộ flow
-    if process.return_code != 0:
-        raise Exception(f"dbt build failed with exit code {process.return_code}. Check logs above for details.")
+    if result.return_code != 0:
+        raise Exception("dbt build failed!")
     
     print("dbt build hoàn tất thành công!")
     return True
@@ -42,6 +45,7 @@ def run_dbt_build():
 def dbt_hourly_run_flow():
     run_dbt_build()
 
+
 if __name__ == "__main__":
     from prefect.flows import flow as prefect_flow
 
@@ -49,10 +53,10 @@ if __name__ == "__main__":
         source="https://github.com/long1234hcc/dbt-smart-bi.git",
         entrypoint="dbt_flow.py:dbt_hourly_run_flow"
     ).to_deployment(
-        name="dbt-run-from-git-debug", 
+        name="dbt-run-from-git-final",
         work_pool_name="dbt-pool"
     )
     
     deployment.apply()
     
-    print("Deployment 'dbt-run-from-git-debug' đã được tạo/cập nhật thành công!")
+    print("Deployment 'dbt-run-from-git-final' đã được tạo/cập nhật thành công!")
